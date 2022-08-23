@@ -2,6 +2,11 @@ body {
   text-align: center;
 }
 
+img {
+  display: block;
+  max-width: 100%;
+}
+
 .form-thumb {
   display: flex;
   align-items: center;
@@ -63,14 +68,28 @@ button {
  overflow: hidden;
 }
 
+.gallery {
+  display: grid;
+  max-width: 1140px;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  grid-auto-rows: 240px;
+  grid-gap: 12px;
+  justify-content: center;
+  margin-left: auto;
+  margin-right: auto;
+}
+
 .photo-card {
   
 }
 
 .info {
-
+display: flex;
+justify-content: center;
+align-items: center;
 }
 
 .info-item {
-
+margin-right: 10px;
 }
+

@@ -1,28 +1,34 @@
-import debounce from 'lodash.debounce';
-import Notiflix from 'notiflix'; //Notiflix.Notify.success(failure,warning,info)('Sol lucet omnibus');
+import Notiflix from 'notiflix';
 import SimpleLightbox from 'simplelightbox';
 import 'simplelightbox/dist/simple-lightbox.min.css';
 
-const { height: cardHeight } = document
-  .querySelector('.gallery')
-  .firstElementChild.getBoundingClientRect();
+// const { height: cardHeight } = document
+//   .querySelector('.gallery')
+//   .firstElementChild.getBoundingClientRect();
 
-window.scrollBy({
-  top: cardHeight * 2,
-  behavior: 'smooth',
-});
+// window.scrollBy({
+//   top: cardHeight * 2,
+//   behavior: 'smooth',
+// });
 
 const axios = require('axios').default;
-
 // axios.<method> will now provide autocomplete and parameter typings
 
-const KEY = '29443813-ca22e65ccc725dfd305ed5d5a';
-const DEBOUNCE_DELAY = 300;
+const KEY_Pixabay = '29443813-ca22e65ccc725dfd305ed5d5a';
+let gallery = new SimpleLightbox('.photo-card .gallery a', {
+  captionDelay: 250,
+});
+// gallery.on('show.simplelightbox', onOpenImageModal);
+
 const formRef = document.querySelector('.search-form');
 const galleryRef = document.querySelector('.gallery');
 const loadMoreBtn = document.querySelector('.load-more');
+let searchQuery = '';
+let page = 1;
 
-formRef.addEventListener('submit', debounce(onSearchImages, DEBOUNCE_DELAY));
+formRef.addEventListener('submit', onSearchImages);
+loadMoreBtn.addEventListener('click', onLoadMore);
+galleryRef.addEventListener('click', onOpenImageModal);
 
 async function getUser() {
   try {
@@ -35,53 +41,94 @@ async function getUser() {
 
 function onSearchImages(evt) {
   evt.preventDefault();
+  searchQuery = evt.currentTarget.elements.searchQuery.value;
+
   clearImageList();
-  fetchImages(evt.target.value.trim())
+  fetchImages(searchQuery.trim())
     .then(images => {
-      if (images.length > 10) {
-        Notiflix.Notify.info(
-          'Too many matches found. Please enter a more specific name.'
+      insertImageMarkup(images);
+      loadMoreBtn.classList.remove('.is-hidden');
+
+      if (images.totalHits > 0) {
+        Notiflix.Notify.success(`Hooray! We found ${images.totalHits} images.`);
+      }
+      
+      if (images.total === 0) {
+        Notiflix.Notify.failure('Sorry, there are no images matching your search query. Please try again.');
+      }
+
+      // if (images.totalHits[length - 1] === images.totalHits) {
+      //   loadMoreBtn.classList.add('.is-hidden');
+      //   Notiflix.Notify.info(
+      //     "We're sorry, but you've reached the end of search results."
+      //   );
+      // }
+      console.log(images);
+      page += 1;
+    })
+    .catch(error => console.log(error));
+}
+
+function onLoadMore() {
+  fetchImages(searchQuery.trim())
+    .then(images => {
+      insertImageMarkup(images);
+      loadMoreBtn.classList.remove('.is-hidden');
+
+      if (images.totalHits > 0) {
+        Notiflix.Notify.success(`Hooray! We found ${images.totalHits} images.`);
+      }
+
+      if (images.total === 0) {
+        Notiflix.Notify.failure(
+          'Sorry, there are no images matching your search query. Please try again.'
         );
       }
-      if (images.length > 1 && images.length < 10) {
-        clearImageList();
-        insertImageMarkup(images);
-      }
-      if (images.status === 404) {
-        Notiflix.Notify.failure('Oops, there is no country with that name.');
-      }
+
+      // if (images.totalHits[length - 1] === images.totalHits) {
+      //   loadMoreBtn.classList.add('.is-hidden');
+      //   Notiflix.Notify.info(
+      //     "We're sorry, but you've reached the end of search results."
+      //   );
+      // }
+      console.log(images);
+      page += 1;
     })
     .catch(error => console.log(error));
 }
 
 const fetchImages = name => {
-  return fetch(
-    `https://restcountries.com/v3.1/name/${name}?fields=name,capital,population,flags,languages`
-  ).then(response => {
+  const url = `https://pixabay.com/api/?key=${KEY_Pixabay}&q=${name}&image_type=photo&orientation=horizontal&safesearch=true&per_page=20&page=${page}`;
+  
+  return fetch(url).then(response => {
     return response.json();
   });
 };
 
 function createImageCardMarkup(images) {
-  return images
+  return images.hits
     .map(
       image => `<div class="photo-card">
-  <img src="${image.webformatURL/largeImageURL}" alt="${image.tags}" loading="lazy" />
+  <a class="gallery__item" href="${image.largeImageURL}"><img class="gallery__image" src="${image.webformatURL}" alt="${image.tags}" loading="lazy" /></a>
   <div class="info">
     <p class="info-item">
       <b>Likes</b>
+       <br/>
       ${image.likes}
     </p>
     <p class="info-item">
       <b>Views</b>
+      <br/>
       ${image.views}
     </p>
     <p class="info-item">
       <b>Comments</b>
+      <br/>
       ${image.comments}
     </p>
     <p class="info-item">
       <b>Downloads</b>
+      <br/>
       ${image.downloads}
     </p>
   </div>
@@ -90,9 +137,17 @@ function createImageCardMarkup(images) {
     .join('');
 }
 
+function onOpenImageModal(event) {
+  event.preventDefault();
+
+  if (event.target.nodeName !== 'IMG') {
+    return;
+  }
+}
+
 function insertImageMarkup(images) {
   const markup = createImageCardMarkup(images);
-  galleryRef.insertAdjacentHTML = ('beforend', markup);
+  galleryRef.insertAdjacentHTML('beforeend', markup);
 }
 
 function clearImageList() {
