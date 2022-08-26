@@ -3,32 +3,21 @@ import SimpleLightbox from 'simplelightbox';
 import 'simplelightbox/dist/simple-lightbox.min.css';
 
 const axios = require('axios').default;
-// axios.<method> will now provide autocomplete and parameter typings
-
 const KEY_Pixabay = '29443813-ca22e65ccc725dfd305ed5d5a';
 
 let gallery = new SimpleLightbox('.gallery .photo-card a', {
   captionDelay: 250,
 });
+let searchQuery = '';
+let page = 1;
 
 const formRef = document.querySelector('.search-form');
 const galleryRef = document.querySelector('.gallery');
 const loadMoreBtn = document.querySelector('.load-more');
-let searchQuery = '';
-let page = 1;
 
 formRef.addEventListener('submit', onSearchImages);
 loadMoreBtn.addEventListener('click', onLoadMore);
 galleryRef.addEventListener('click', onOpenImageModal);
-
-async function getUser() {
-  try {
-    const response = await axios.get('/user?ID=12345');
-    console.log(response);
-  } catch (error) {
-    console.error(error);
-  }
-}
 
 function onSearchImages(evt) {
   evt.preventDefault();
@@ -41,26 +30,51 @@ function onSearchImages(evt) {
   clearImageList();
   page = 1;
 
-  fetchImages(searchQuery.trim())
-    .then(images => {
-      insertImageMarkup(images);
-      loadMoreBtn.classList.add('is-hidden');
+  renderImagesMarkup(searchQuery.trim());
 
-      if (images.totalHits > 0) {
-        Notiflix.Notify.success(`Hooray! We found ${images.totalHits} images.`);
-        loadMoreBtn.classList.remove('is-hidden');
+  // fetchImages(searchQuery.trim())
+  //   .then(images => {
+  //     insertImageMarkup(images);
+  //     loadMoreBtn.classList.add('is-hidden');
 
-      }
-      if (images.total === 0) {
-        Notiflix.Notify.failure(
-          'Sorry, there are no images matching your search query. Please try again.'
-        );
-      }
+  //     if (images.totalHits > 0) {
+  //       Notiflix.Notify.success(`Hooray! We found ${images.totalHits} images.`);
+  //       loadMoreBtn.classList.remove('is-hidden');
 
-      page += 1;
-      gallery.refresh();
-    })
-    .catch(error => console.log(error));
+  //     }
+  //     if (images.total === 0) {
+  //       Notiflix.Notify.failure(
+  //         'Sorry, there are no images matching your search query. Please try again.'
+  //       );
+  //     }
+
+  //     page += 1;
+  //     gallery.refresh();
+  //   })
+  //   .catch(error => console.log(error));
+}
+
+async function renderImagesMarkup(searchQuery) {
+  try {
+    const images = await fetchImages(searchQuery.trim());
+    const renderMarkup = await insertImageMarkup(images);
+    loadMoreBtn.classList.add('is-hidden');
+
+    if (images.totalHits > 0) {
+      Notiflix.Notify.success(`Hooray! We found ${images.totalHits} images.`);
+      loadMoreBtn.classList.remove('is-hidden');
+    }
+    if (images.total === 0) {
+      Notiflix.Notify.failure(
+        'Sorry, there are no images matching your search query. Please try again.'
+      );
+    }
+    page += 1;
+    gallery.refresh();
+    
+  } catch (error) {
+    console.log(error);
+  }
 }
 
 function onLoadMore() {
@@ -71,6 +85,7 @@ function onLoadMore() {
       smoothScroll();
 
       if (images.hits.length === 0) {
+        loadMoreBtn.classList.add('is-hidden');
         Notiflix.Notify.warning(
           `We're sorry, but you've reached the end of search results.`
         );
@@ -82,13 +97,20 @@ function onLoadMore() {
     .catch(error => console.log(error));
 }
 
-function fetchImages(name) {
+async function fetchImages(name) {
   const url = `https://pixabay.com/api/?key=${KEY_Pixabay}&q=${name}&image_type=photo&orientation=horizontal&safesearch=true&per_page=20&page=${page}`;
+  const response = await fetch(url);
 
-  return fetch(url).then(response => {
-    return response.json();
-  });
+  return await response.json();
 }
+
+// function fetchImages(name) {
+//   const url = `https://pixabay.com/api/?key=${KEY_Pixabay}&q=${name}&image_type=photo&orientation=horizontal&safesearch=true&per_page=20&page=${page}`;
+
+//   return fetch(url).then(response => {
+//     return response.json();
+//   });
+// }
 
 function createImageCardMarkup(images) {
   return images.hits
