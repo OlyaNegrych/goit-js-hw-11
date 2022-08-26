@@ -1,8 +1,8 @@
 import Notiflix from 'notiflix';
 import SimpleLightbox from 'simplelightbox';
 import 'simplelightbox/dist/simple-lightbox.min.css';
+import axios from 'axios';
 
-const axios = require('axios').default;
 const KEY_Pixabay = '29443813-ca22e65ccc725dfd305ed5d5a';
 
 let gallery = new SimpleLightbox('.gallery .photo-card a', {
@@ -10,6 +10,7 @@ let gallery = new SimpleLightbox('.gallery .photo-card a', {
 });
 let searchQuery = '';
 let page = 1;
+let perPage = 20;
 
 const formRef = document.querySelector('.search-form');
 const galleryRef = document.querySelector('.gallery');
@@ -54,37 +55,15 @@ function onSearchImages(evt) {
   //   .catch(error => console.log(error));
 }
 
-async function renderImagesMarkup(searchQuery) {
-  try {
-    const images = await fetchImages(searchQuery.trim());
-    const renderMarkup = await insertImageMarkup(images);
-    loadMoreBtn.classList.add('is-hidden');
-
-    if (images.totalHits > 0) {
-      Notiflix.Notify.success(`Hooray! We found ${images.totalHits} images.`);
-      loadMoreBtn.classList.remove('is-hidden');
-    }
-    if (images.total === 0) {
-      Notiflix.Notify.failure(
-        'Sorry, there are no images matching your search query. Please try again.'
-      );
-    }
-    page += 1;
-    gallery.refresh();
-    
-  } catch (error) {
-    console.log(error);
-  }
-}
-
 function onLoadMore() {
   fetchImages(searchQuery.trim())
     .then(images => {
+      const totalPages = images.totalHits / perPage;
       insertImageMarkup(images);
       loadMoreBtn.classList.remove('.is-hidden');
       smoothScroll();
 
-      if (images.hits.length === 0) {
+      if (page > totalPages) {
         loadMoreBtn.classList.add('is-hidden');
         Notiflix.Notify.warning(
           `We're sorry, but you've reached the end of search results.`
@@ -98,10 +77,17 @@ function onLoadMore() {
 }
 
 async function fetchImages(name) {
-  const url = `https://pixabay.com/api/?key=${KEY_Pixabay}&q=${name}&image_type=photo&orientation=horizontal&safesearch=true&per_page=20&page=${page}`;
-  const response = await fetch(url);
+  const url = `https://pixabay.com/api/?key=${KEY_Pixabay}&q=${name}&image_type=photo&orientation=horizontal&safesearch=true&per_page=${perPage}&page=${page}`;
+  const response = await axios.get(url);
+  const images = await response.data;
+  if (name === '') {
+    Notiflix.Notify.info(
+      `Please, enter the text to find images.`
+    );
+    return;
+  }
 
-  return await response.json();
+  return images;
 }
 
 // function fetchImages(name) {
@@ -111,6 +97,29 @@ async function fetchImages(name) {
 //     return response.json();
 //   });
 // }
+
+async function renderImagesMarkup(searchQuery) {
+  try {
+    const images = await fetchImages(searchQuery.trim());
+    const renderMarkup = await insertImageMarkup(images);
+    loadMoreBtn.classList.add('is-hidden');
+
+    if (images.totalHits > 0) {
+      Notiflix.Notify.success(`Hooray! We found ${images.totalHits} images.`);
+      loadMoreBtn.classList.remove('is-hidden');
+    }
+    if (images.totalHits === 0) {
+      Notiflix.Notify.failure(
+        'Sorry, there are no images matching your search query. Please try again.'
+      );
+    }
+
+    page += 1;
+    gallery.refresh();
+  } catch (error) {
+    console.log(error);
+  }
+}
 
 function createImageCardMarkup(images) {
   return images.hits
