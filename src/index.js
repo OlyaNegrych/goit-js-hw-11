@@ -84,6 +84,7 @@ async function fetchImages(name) {
     Notiflix.Notify.info(
       `Please, enter the text to find images.`
     );
+    loadMoreBtn.classList.add('is-hidden');
     return;
   }
 
